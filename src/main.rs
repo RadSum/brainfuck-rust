@@ -15,9 +15,13 @@ fn main() {
     });
 
     let tokens = to_tokens(&file_content);
-
-    for token in tokens {
-        println!("{:?}", token);
+    
+    if let Some(tokens) = tokens {
+        for token in tokens {
+            println!("{:?}", token);
+        }
+    } else {
+        eprintln!("Error while parsing");
     }
 }
 
