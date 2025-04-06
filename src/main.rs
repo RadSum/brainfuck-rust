@@ -1,5 +1,5 @@
 use std::process::exit;
-use std::io::{Read, Write};
+use std::io::{Read, Write, stdin, stdout};
 
 mod interactive;
 mod tokenizer;
@@ -21,16 +21,40 @@ fn main() {
     let tokens = to_tokens(&file_content);
     
     if let Some(tokens) = tokens {
-        run_program(tokens);
+        run_program(tokens, true);
     } else {
         eprintln!("Error while parsing");
     }
 }
 
-fn run_program(program: Vec<Token>) -> () {
+fn run_program(program: Vec<Token>, is_interactive: bool) -> () {
     let mut psw = ProgramStatus::new(program);
+    let mut command_str = String::new();
 
+    let mut run = !is_interactive;
     while !psw.finished() {
+        if is_interactive {
+            print!("cmd> ");
+            stdout().flush().unwrap();
+            _ = stdin().read_line(&mut command_str).unwrap();
+            let cmd = command_str.trim();
+
+            run = false;
+            match cmd {
+                "pc" => {
+                    println!("pc = {}", psw.pc);
+                },
+                "n" => {
+                    run = true;
+                },
+                _ => todo!(),
+            }
+
+            command_str.clear();
+        }
+        if !run {
+            continue;
+        }
         psw.step(); 
     }
 }
