@@ -1,6 +1,7 @@
 use std::process::exit;
 use std::io::{Read, Write};
 
+mod interactive;
 mod tokenizer;
 use tokenizer::{to_tokens, Token};
 
@@ -20,42 +21,66 @@ fn main() {
     let tokens = to_tokens(&file_content);
     
     if let Some(tokens) = tokens {
-        run_program(&tokens);
+        run_program(tokens);
     } else {
         eprintln!("Error while parsing");
     }
 }
 
-fn run_program(program: &Vec<Token>) -> () {
-    let mut pc = 0;
-    let mut memory: [u8; MEMORY_SIZE] = [0; MEMORY_SIZE];
-    let mut memory_pointer: usize = 0;
+fn run_program(program: Vec<Token>) -> () {
+    let mut psw = ProgramStatus::new(program);
 
-    while pc < program.len() {
-        match program[pc] {
-            Token::LeftArrow => memory_pointer -= 1,
-            Token::RightArrow => memory_pointer += 1,
+    while !psw.finished() {
+        psw.step(); 
+    }
+}
+
+struct ProgramStatus {
+    program_memory: Vec<Token>,
+    data_memory: [u8; 30000],
+    pc: usize,
+    memory_pointer: usize,
+}
+
+impl ProgramStatus {
+    fn new(pm: Vec<Token>) -> Self {
+        Self {
+            program_memory: pm, 
+            data_memory: [0; MEMORY_SIZE],
+            pc: 0,
+            memory_pointer: 0,
+        }
+    }
+
+    fn finished(&self) -> bool {
+        self.pc >= self.program_memory.len()
+    }
+
+    fn step(&mut self) -> () {
+        match self.program_memory[self.pc] {
+            Token::LeftArrow =>  self.memory_pointer -= 1,
+            Token::RightArrow => self.memory_pointer += 1,
             Token::LeftBracket(_pc) => {
-                if memory[memory_pointer] == 0 {
-                    pc = _pc;
-                    continue;
+                if self.data_memory[self.memory_pointer] == 0 {
+                    self.pc = _pc;
+                    return;
                 }
             },
             Token::RightBracket(_pc) => {
-                if memory[memory_pointer] != 0 {
-                    pc = _pc;
-                    continue;
+                if self.data_memory[self.memory_pointer] != 0 {
+                    self.pc = _pc;
+                    return;
                 }
             },
-            Token::Plus => memory[memory_pointer] = memory[memory_pointer].wrapping_add(1),
-            Token::Minus => memory[memory_pointer] = memory[memory_pointer].wrapping_sub(1),
+            Token::Plus => self.data_memory[self.memory_pointer] = self.data_memory[self.memory_pointer].wrapping_add(1),
+            Token::Minus => self.data_memory[self.memory_pointer] = self.data_memory[self.memory_pointer].wrapping_sub(1),
             Token::Dot => {
-                print!("{}", memory[memory_pointer] as char);
+                print!("{}", self.data_memory[self.memory_pointer] as char);
                 std::io::stdout().flush().expect("error while flushing `stdout`");
             },
-            Token::Comma => memory[memory_pointer] = read_byte(),
+            Token::Comma => self.data_memory[self.memory_pointer] = read_byte(),
         }
-        pc += 1;
+        self.pc += 1;
     }
 }
 
