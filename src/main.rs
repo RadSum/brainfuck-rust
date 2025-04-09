@@ -32,7 +32,6 @@ fn run_program(program: Vec<Token>, is_interactive: bool) -> () {
     let mut psw = ProgramStatus::new(program);
     let mut command_str = String::new();
 
-    //let mut run = !is_interactive;
     while !psw.finished() {
         if is_interactive {
             print!("cmd> ");
@@ -40,10 +39,13 @@ fn run_program(program: Vec<Token>, is_interactive: bool) -> () {
             _ = stdin().read_line(&mut command_str).unwrap();
 
             let cmd = Command::try_from(command_str.trim());
-            println!("{:?}", cmd);
-            command_str.clear();
+            if let Ok(cmd) = cmd {
+                cmd.run_command(&mut psw);
+            }
+        } else {
+            psw.step();
         }
-        psw.step(); 
+        command_str.clear();
     }
 }
 
@@ -68,7 +70,7 @@ impl ProgramStatus {
         self.pc >= self.program_memory.len()
     }
 
-    fn step(&mut self) -> () {
+    fn step(&mut self) {
         match self.program_memory[self.pc] {
             Token::LeftArrow =>  self.memory_pointer -= 1,
             Token::RightArrow => self.memory_pointer += 1,

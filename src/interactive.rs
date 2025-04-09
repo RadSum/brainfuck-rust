@@ -4,6 +4,32 @@ pub enum Command {
     Print(PrintValue),
 }
 
+impl Command {
+    pub fn run_command(self, program_status: &mut super::ProgramStatus) {
+        match self {
+            Self::Next(c) => (0..c).for_each(|_| { 
+                if program_status.finished() { return; } 
+                program_status.step() }),
+            Self::Print(PrintValue::ProgramCounter) => println!("{}", program_status.pc),
+            Self::Print(PrintValue::Memory(i, t)) => {
+                if t == MemoryType::Data {
+                    print_memory(i, &program_status.data_memory);
+                } else {
+                    print_memory(i, &program_status.program_memory);
+                }
+            },
+        } 
+    }
+}
+
+fn print_memory<T>(int: MemoryInterval, mem: &[T]) where T: std::fmt::Debug {
+    let MemoryInterval(s, e) = int;
+    (s..e).for_each(|i| {
+        print!("{:?} ", mem[i]);
+    });
+    println!();
+}
+
 impl TryFrom<&str> for Command {
     type Error = String;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -42,7 +68,7 @@ pub enum PrintValue {
     Memory(MemoryInterval, MemoryType),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum MemoryType {
     Instruction,
     Data,
@@ -56,7 +82,7 @@ impl TryFrom<&str> for PrintValue {
         let mut it = value.split_whitespace();   
 
         let mem_type: MemoryType;
-        match it.nth(0).unwrap() {
+        match it.nth(0).ok_or("Invalid args to print")? {
             "im" | "instruction" => mem_type = MemoryType::Instruction,
             "dm" | "data" => mem_type = MemoryType::Data,
             "pc" | "ip" => return Ok(Self::ProgramCounter), 
