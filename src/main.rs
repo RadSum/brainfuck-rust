@@ -1,31 +1,29 @@
-use std::process::exit;
 use std::io::{Read, Write, stdin, stdout};
+use std::error::Error;
+use clap::Parser;
 
-mod interactive;
-use interactive::Command;
 mod tokenizer;
+mod interactive;
+mod args;
+use interactive::Command;
 use tokenizer::{to_tokens, Token};
+use args::Args;
 
 const MEMORY_SIZE: usize = 30_000;
 
-fn main() {
-    let Some(filename) = std::env::args().nth(1) else {
-        eprintln!("USAGE: {} [filename].bf", std::env::args().nth(0).unwrap());
-        exit(1);
-    };
+fn main() -> Result<(), Box<dyn Error>> {
+    let args = Args::parse();
 
-    let file_content = std::fs::read_to_string(&filename).unwrap_or_else(|e| {
-        eprintln!("There was an error opening file: \"{}\", err: {}", filename, e);
-        exit(1);
-    });
+    let file_contents = std::fs::read_to_string(&args.file)?;
+    let tokens = to_tokens(&file_contents);
 
-    let tokens = to_tokens(&file_content);
-    
     if let Some(tokens) = tokens {
-        run_program(tokens, true);
+        run_program(tokens, args.interactive);
     } else {
         eprintln!("Error while parsing");
     }
+
+    Ok(())
 }
 
 fn run_program(program: Vec<Token>, is_interactive: bool) -> () {
@@ -42,10 +40,10 @@ fn run_program(program: Vec<Token>, is_interactive: bool) -> () {
             if let Ok(cmd) = cmd {
                 cmd.run_command(&mut psw);
             }
+            command_str.clear();
         } else {
             psw.step();
         }
-        command_str.clear();
     }
 }
 
